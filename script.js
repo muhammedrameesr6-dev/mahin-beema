@@ -203,147 +203,331 @@ const observer = new IntersectionObserver((entries) => {
 revealTargets.forEach(el => observer.observe(el));
 
 // ============================================================
-// RSVP â€” Attendance Toggle
+// RSVP & PRIVATE WISHES CONTROLLER (SHIHAB-NAFIYA MODEL)
 // ============================================================
-const btnYes = document.getElementById('btnYes');
-const btnNo = document.getElementById('btnNo');
-const attendanceInput = document.getElementById('attendanceInput');
 
-function setAttendance(value) {
-  if (attendanceInput) attendanceInput.value = value;
+const RSVP_STORAGE_KEY = 'mahin_beema_rsvps';
+const OWNER_PASSWORD = 'MAHIN2027'; // Primary password (also accepts MAHIN, BEEMA, 2027)
 
-  if (value === 'yes') {
-    if (btnYes) { btnYes.classList.add('active'); btnYes.setAttribute('aria-pressed', 'true'); }
-    if (btnNo)  { btnNo.classList.remove('active'); btnNo.setAttribute('aria-pressed', 'false'); }
-  } else {
-    if (btnNo)  { btnNo.classList.add('active'); btnNo.setAttribute('aria-pressed', 'true'); }
-    if (btnYes) { btnYes.classList.remove('active'); btnYes.setAttribute('aria-pressed', 'false'); }
+// Pre-populate with a warm sample wish if empty so the owner immediately sees the dashboard layout
+(function initDefaultRsvps() {
+  try {
+    if (!localStorage.getItem(RSVP_STORAGE_KEY)) {
+      const initialDemos = [
+        {
+          id: 'rsvp_sample_1',
+          name: 'Shan & Family',
+          attendance: 'Joyfully Accept',
+          guests: '3 Persons',
+          message: 'Heartiest congratulations to Mahin & Beema! May Allah bless your union with endless happiness, love, and barakah.',
+          date: '03 Jan 2027',
+          timestamp: Date.now()
+        }
+      ];
+      localStorage.setItem(RSVP_STORAGE_KEY, JSON.stringify(initialDemos));
+    }
+  } catch (err) {
+    console.warn('Storage initialisation error:', err);
+  }
+})();
+
+function getStoredRsvps() {
+  try {
+    return JSON.parse(localStorage.getItem(RSVP_STORAGE_KEY) || '[]');
+  } catch (e) {
+    return [];
   }
 }
 
-if (btnYes) btnYes.addEventListener('click', () => setAttendance('yes'));
-if (btnNo)  btnNo.addEventListener('click',  () => setAttendance('no'));
+function saveStoredRsvps(list) {
+  try {
+    localStorage.setItem(RSVP_STORAGE_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error('Failed to save RSVP:', e);
+  }
+}
 
-// ============================================================
-// RSVP — Form Submit — Google Sheets via Apps Script
-// ============================================================
+// Attendance Radio Button Toggle (Hides guest count dropdown when declining)
+function toggleGuestCount(show) {
+  const guestGroup = document.getElementById('guestCountGroup');
+  if (guestGroup) {
+    guestGroup.style.display = show ? 'flex' : 'none';
+  }
+}
 
-const APPS_SCRIPT_URL = '';
-const rsvpForm    = document.getElementById('rsvpForm');
-const rsvpSuccess = document.getElementById('rsvpSuccess');
+// Form Submission Handler
+function submitRsvpForm(e) {
+  if (e && e.preventDefault) e.preventDefault();
 
-if (rsvpForm) {
-  const submitBtn = rsvpForm.querySelector('.rsvp-submit');
+  const nameInput = document.getElementById('rsvpName');
+  const msgInput  = document.getElementById('rsvpMessage');
+  const guestsEl  = document.getElementById('rsvpGuests');
+  const attendEl  = document.querySelector('input[name="rsvpAttend"]:checked');
+  const submitBtn = document.getElementById('rsvpSubmitBtn');
 
-  rsvpForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const name = nameInput ? nameInput.value.trim() : '';
+  const attendance = attendEl ? attendEl.value : 'Joyfully Accept';
+  const isDecline = attendance === 'Regretfully Decline';
+  const guests = isDecline ? '0 Persons' : (guestsEl ? guestsEl.value : '1 Person');
+  const message = msgInput ? msgInput.value.trim() : '';
 
-    const nameField = document.getElementById('rsvpName');
-
-    // Basic validation
-    if (!nameField.value.trim()) {
-      nameField.focus();
-      nameField.style.borderColor = '#6E473B';
-      nameField.style.boxShadow = '0 0 0 3px rgba(110,71,59,0.18)';
+  // Validation
+  if (!name) {
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.style.borderColor = 'var(--gold)';
+      nameInput.style.boxShadow = '0 0 0 3px rgba(200,57,58,0.25)';
       setTimeout(() => {
-        nameField.style.borderColor = '';
-        nameField.style.boxShadow = '';
+        nameInput.style.borderColor = '';
+        nameInput.style.boxShadow = '';
       }, 2200);
-      return;
     }
+    return;
+  }
 
-    // Collect data
-    const payload = {
-      attendance: attendanceInput ? attendanceInput.value : '',
-      name: document.getElementById('rsvpName').value.trim(),
-      mobile: document.getElementById('rsvpMobile').value.trim(),
-      guests: document.getElementById('rsvpGuests').value,
-      message: document.getElementById('rsvpMessage').value.trim(),
-    };
-
-    // Disable button and show loading state
+  // Visual feedback
+  if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Sending…';
+    submitBtn.textContent = 'Recording RSVP…';
+  }
 
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      showRsvpSuccess();
-    } catch (err) {
-      try {
-        const existing = JSON.parse(localStorage.getItem('rsvp_responses') || '[]');
-        existing.push({ ...payload, savedOffline: true, timestamp: new Date().toISOString() });
-        localStorage.setItem('rsvp_responses', JSON.stringify(existing));
-      } catch (_) { /* ignore */ }
-      showRsvpSuccess();
-      console.warn('RSVP saved offline (network error):', err);
+  // Create new entry
+  const now = new Date();
+  const dateFormatted = now.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const newEntry = {
+    id: 'rsvp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    name: name,
+    attendance: attendance,
+    guests: guests,
+    message: message,
+    date: dateFormatted,
+    timestamp: Date.now()
+  };
+
+  const list = getStoredRsvps();
+  list.unshift(newEntry); // Add newest at top
+  saveStoredRsvps(list);
+
+  // If owner view is currently open, live update it
+  if (sessionStorage.getItem('mahin_beema_unlocked') === '1') {
+    renderOwnerRsvps();
+  }
+
+  setTimeout(() => {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Confirm & Send RSVP';
+    }
+    const form = document.getElementById('rsvpForm');
+    const successBox = document.getElementById('rsvpSuccessBox');
+    if (form) form.hidden = true;
+    if (successBox) successBox.hidden = false;
+  }, 400);
+}
+
+// Reset form for another response
+function resetRsvpForm() {
+  const form = document.getElementById('rsvpForm');
+  const successBox = document.getElementById('rsvpSuccessBox');
+  if (form) {
+    form.reset();
+    form.hidden = false;
+  }
+  if (successBox) {
+    successBox.hidden = true;
+  }
+  toggleGuestCount(true);
+}
+
+// ============================================================
+// OWNER LOGIN & LOCK MODAL CONTROLS
+// ============================================================
+
+function openWishesUnlockModal() {
+  const modal = document.getElementById('wishesPassModal');
+  const input = document.getElementById('wishesPassInput');
+  const err = document.getElementById('ownerPassError');
+  if (err) err.style.display = 'none';
+  if (input) input.value = '';
+  if (modal) modal.classList.add('open');
+  setTimeout(() => input && input.focus(), 150);
+}
+
+function closeWishesPassModal() {
+  const modal = document.getElementById('wishesPassModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function checkWishesPassword() {
+  const input = document.getElementById('wishesPassInput');
+  const err = document.getElementById('ownerPassError');
+  const val = (input ? input.value : '').trim().toUpperCase();
+
+  // Accept MAHIN2027, 2027, MAHIN, BEEMA
+  const validKeys = ['MAHIN2027', '2027', 'MAHIN', 'BEEMA'];
+
+  if (validKeys.includes(val)) {
+    sessionStorage.setItem('mahin_beema_unlocked', '1');
+    closeWishesPassModal();
+    unlockWishesView();
+  } else {
+    if (err) {
+      err.textContent = 'Incorrect password. Please try again.';
+      err.style.display = 'block';
+    }
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }
+}
+
+function unlockWishesView() {
+  const lockCard = document.getElementById('wishesLockCard');
+  const ownerView = document.getElementById('ownerRsvpView');
+  if (lockCard) lockCard.style.display = 'none';
+  if (ownerView) {
+    ownerView.style.display = 'block';
+    renderOwnerRsvps();
+  }
+}
+
+function relockWishes() {
+  sessionStorage.removeItem('mahin_beema_unlocked');
+  const lockCard = document.getElementById('wishesLockCard');
+  const ownerView = document.getElementById('ownerRsvpView');
+  if (lockCard) lockCard.style.display = 'block';
+  if (ownerView) ownerView.style.display = 'none';
+}
+
+function initWishesLock() {
+  if (sessionStorage.getItem('mahin_beema_unlocked') === '1') {
+    unlockWishesView();
+  }
+}
+
+// ============================================================
+// RENDER OWNER DASHBOARD (STATS & CARDS)
+// ============================================================
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderOwnerRsvps() {
+  const rsvps = getStoredRsvps();
+  const container = document.getElementById('rsvpListContainer');
+  const totalEl = document.getElementById('statTotalRsvps');
+  const acceptEl = document.getElementById('statAccepted');
+  const declineEl = document.getElementById('statDeclined');
+  const guestsEl = document.getElementById('statTotalGuests');
+
+  let acceptedCount = 0;
+  let declinedCount = 0;
+  let totalHeadcount = 0;
+
+  rsvps.forEach(r => {
+    if (r.attendance === 'Joyfully Accept') {
+      acceptedCount++;
+      const num = parseInt(r.guests) || 1;
+      totalHeadcount += num;
+    } else {
+      declinedCount++;
     }
   });
+
+  if (totalEl) totalEl.textContent = rsvps.length;
+  if (acceptEl) acceptEl.textContent = acceptedCount;
+  if (declineEl) declineEl.textContent = declinedCount;
+  if (guestsEl) guestsEl.textContent = totalHeadcount;
+
+  if (!container) return;
+
+  if (rsvps.length === 0) {
+    container.innerHTML = `
+      <div class="rsvp-empty-msg">
+        No RSVPs or wishes received yet. Submissions through the form above will appear here.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = rsvps.map(item => {
+    const isAccept = item.attendance === 'Joyfully Accept';
+    const badgeClass = isAccept ? 'accept' : 'decline';
+    const badgeIcon = isAccept ? '✓' : '✕';
+    const safeName = escapeHtml(item.name || 'Anonymous Guest');
+    const safeMsg = escapeHtml(item.message || '');
+    const guestBadge = isAccept ? `<span class="rsvp-badge guests">${escapeHtml(item.guests || '1 Person')}</span>` : '';
+
+    return `
+      <div class="rsvp-item-card" data-id="${item.id}">
+        <div class="rsvp-item-header">
+          <span class="rsvp-item-name">${safeName}</span>
+          <div class="rsvp-item-badges">
+            <span class="rsvp-badge ${badgeClass}">${badgeIcon} ${escapeHtml(item.attendance)}</span>
+            ${guestBadge}
+          </div>
+        </div>
+        ${safeMsg ? `<p class="rsvp-item-msg">&ldquo;${safeMsg}&rdquo;</p>` : ''}
+        <div class="rsvp-item-footer">
+          <span>${escapeHtml(item.date || '')}</span>
+          <button type="button" class="rsvp-del-btn" onclick="deleteRsvp('${item.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
-function showRsvpSuccess() {
-  if (rsvpForm)    rsvpForm.hidden    = true;
-  if (rsvpSuccess) rsvpSuccess.hidden = false;
+function deleteRsvp(id) {
+  if (!confirm('Are you sure you want to delete this RSVP?')) return;
+  const list = getStoredRsvps().filter(item => item.id !== id);
+  saveStoredRsvps(list);
+  renderOwnerRsvps();
 }
 
 // ============================================================
-// WISHING BOX — sends message to WhatsApp
+// EXPORT TO CSV
 // ============================================================
 
-// 📱 Change this to the target WhatsApp number (international format, no + or spaces)
-// Example: India +91 98765 43210  →  919876543210
-const WHATSAPP_NUMBER = '918547545187'; // +91 85475 45187 (Mahin)
+function exportRsvpsCsv() {
+  const rsvps = getStoredRsvps();
+  if (rsvps.length === 0) {
+    alert('No RSVPs to export yet.');
+    return;
+  }
 
-const wishForm     = document.getElementById('wishForm');
-const wishSuccess  = document.getElementById('wishSuccess');
-const wishAgainBtn = document.getElementById('wishAgainBtn');
+  const headers = ['Name', 'Attendance', 'Guests', 'Message', 'Date'];
+  const rows = rsvps.map(r => [
+    `"${(r.name || '').replace(/"/g, '""')}"`,
+    `"${(r.attendance || '').replace(/"/g, '""')}"`,
+    `"${(r.guests || '').replace(/"/g, '""')}"`,
+    `"${(r.message || '').replace(/"/g, '""')}"`,
+    `"${(r.date || '').replace(/"/g, '""')}"`
+  ]);
 
-if (wishForm) {
-  wishForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const nameEl = document.getElementById('wishName');
-    const msgEl  = document.getElementById('wishMessage');
-    const name   = nameEl.value.trim();
-    const msg    = msgEl.value.trim();
-
-    // Basic validation — highlight empty fields
-    let valid = true;
-    [nameEl, msgEl].forEach(el => {
-      if (!el.value.trim()) {
-        el.style.borderColor  = 'var(--gold)';
-        el.style.boxShadow    = '0 0 0 3px rgba(200,57,58,0.20)';
-        setTimeout(() => {
-          el.style.borderColor = '';
-          el.style.boxShadow   = '';
-        }, 2200);
-        valid = false;
-      }
-    });
-    if (!valid) { nameEl.focus(); return; }
-
-    // Build WhatsApp deep-link with pre-filled message
-    const text = `*Wedding Wish for Mahin & Beema*\n\n*From:* ${name}\n\n*Message:*\n${msg}`;
-    const url  = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
-
-    window.location.href = url;
-
-    // Show success state
-    wishForm.hidden    = true;
-    wishSuccess.hidden = false;
-  });
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', 'mahin_beema_wedding_rsvps.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
-if (wishAgainBtn) {
-  wishAgainBtn.addEventListener('click', () => {
-    document.getElementById('wishName').value    = '';
-    document.getElementById('wishMessage').value = '';
-    wishSuccess.hidden = true;
-    wishForm.hidden    = false;
-  });
-}
+// Initialize on page load
+initWishesLock();
+
 

@@ -434,66 +434,165 @@
     </div>
   </section>
 
-  <!-- ============ WISHING BOX ============ -->
-  <section class="section wish-section" id="wishes">
-    <p class="section-eyebrow">Send Your Blessings</p>
-    <h2 class="section-title">Wishing Box</h2>
+  <!-- ============ RSVP & BLESSINGS ============ -->
+  <section class="section rsvp-section" id="rsvp">
+    <p class="section-eyebrow">Kindly RSVP &amp; Blessings</p>
+    <h2 class="section-title">Celebrate With Us</h2>
 
-    <div class="wish-card reveal">
+    <div class="rsvp-card reveal">
       <svg class="card-corner-sprig" aria-hidden="true">
         <use href="#sprig-motif" />
       </svg>
 
-      <p class="wish-intro">
-        Leave a heartfelt wish to Mahin &amp; Beema via WhatsApp 💌
-      </p>
-
-      <form class="wish-form" id="wishForm" novalidate>
-        <div class="wish-field">
-          <label class="wish-label" for="wishName">Your Name</label>
+      <!-- The RSVP Form (Matches model exactly) -->
+      <form class="rsvp-form" id="rsvpForm" novalidate onsubmit="submitRsvpForm(event)">
+        <!-- Name -->
+        <div class="rsvp-field-group">
+          <label class="rsvp-label" for="rsvpName">Name</label>
           <input
+            id="rsvpName"
             class="wish-input"
             type="text"
-            id="wishName"
-            name="name"
-            placeholder="e.g. Mohammed Ali"
+            maxlength="70"
+            placeholder="Your full name"
             autocomplete="name"
             required
           >
         </div>
 
-        <div class="wish-field">
-          <label class="wish-label" for="wishMessage">Your Wish / Dua</label>
+        <!-- Attendance Radio Toggle -->
+        <div class="rsvp-field-group">
+          <label class="rsvp-label">Will You Attend?</label>
+          <div class="rsvp-radio-group">
+            <label class="rsvp-radio-opt">
+              <input type="radio" name="rsvpAttend" value="Joyfully Accept" checked onchange="toggleGuestCount(true)">
+              <span class="rsvp-radio-box">&#10003; Joyfully Accept</span>
+            </label>
+            <label class="rsvp-radio-opt">
+              <input type="radio" name="rsvpAttend" value="Regretfully Decline" onchange="toggleGuestCount(false)">
+              <span class="rsvp-radio-box">&#10005; Regretfully Decline</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Number of Guests (Select Dropdown) -->
+        <div class="rsvp-field-group" id="guestCountGroup">
+          <label class="rsvp-label" for="rsvpGuests">Number of Guests</label>
+          <div class="rsvp-select-wrap">
+            <select id="rsvpGuests" class="wish-input rsvp-select">
+              <option value="1 Person">1 Person</option>
+              <option value="2 Persons" selected>2 Persons</option>
+              <option value="3 Persons">3 Persons</option>
+              <option value="4 Persons">4 Persons</option>
+              <option value="5+ Persons (Family)">5+ Persons (Family)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Message & Wishes -->
+        <div class="rsvp-field-group">
+          <label class="rsvp-label" for="rsvpMessage">Message &amp; Wishes</label>
           <textarea
+            id="rsvpMessage"
             class="wish-input wish-textarea"
-            id="wishMessage"
-            name="message"
-            rows="5"
-            placeholder="May Allah bless this union with endless love, peace, and happiness…"
+            rows="4"
+            placeholder="Your message of love, blessing &amp; warm wishes…"
             required
           ></textarea>
         </div>
 
-        <button class="wish-submit" type="submit" id="wishSubmitBtn">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-              stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Send via WhatsApp
+        <button class="rsvp-submit-btn" type="submit" id="rsvpSubmitBtn">
+          Confirm &amp; Send RSVP
         </button>
       </form>
 
-      <div class="wish-success" id="wishSuccess" aria-live="polite" hidden>
+      <!-- Submission Success State -->
+      <div class="rsvp-submit-success" id="rsvpSuccessBox" hidden>
         <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.4"/>
           <path d="M8 12l3 3 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <p class="wish-success-title">JazakAllahu Khayran! 🤍</p>
-        <p class="wish-success-sub">Your wish has been sent. May Allah accept your duas.</p> 
-        <button type="button" class="wish-again-btn" id="wishAgainBtn">Send Another Wish</button>
+        <p class="rsvp-success-title">JazakAllahu Khayran! 🤍</p>
+        <p class="rsvp-success-sub">Your RSVP and heartfelt wish have been recorded. We look forward to celebrating together.</p>
+        <button type="button" class="rsvp-another-btn" onclick="resetRsvpForm()">Submit Another Response</button>
+      </div>
+
+      <!-- LOCKED STATE CARD (Visible to guests) -->
+      <div id="wishesLockCard" class="wishes-lock-card">
+        <div class="wlc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <div class="wlc-title">Private RSVPs &amp; Wishes</div>
+        <p class="wlc-desc">All submitted RSVPs, guest attendance, and heartfelt wishes are kept private for the couple.</p>
+        <button type="button" class="wlc-btn" onclick="openWishesUnlockModal()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          View RSVPs (Owner Login)
+        </button>
+      </div>
+
+      <!-- UNLOCKED STATE (Visible only to Owner after Password) -->
+      <div id="ownerRsvpView" class="owner-rsvp-view" style="display:none;">
+        <div class="wishes-lock-bar">
+          <span class="wlb-status">🔒 Owner View: Received RSVPs &amp; Wishes</span>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="wlb-btn export-btn" onclick="exportRsvpsCsv()">Export CSV</button>
+            <button type="button" class="wlb-btn" onclick="relockWishes()">Lock RSVPs</button>
+          </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="owner-stats-bar">
+          <div class="owner-stat-card">
+            <span class="stat-number" id="statTotalRsvps">0</span>
+            <span class="stat-label">Total RSVPs</span>
+          </div>
+          <div class="owner-stat-card accept">
+            <span class="stat-number" id="statAccepted">0</span>
+            <span class="stat-label">Accepted</span>
+          </div>
+          <div class="owner-stat-card decline">
+            <span class="stat-number" id="statDeclined">0</span>
+            <span class="stat-label">Declined</span>
+          </div>
+          <div class="owner-stat-card guests">
+            <span class="stat-number" id="statTotalGuests">0</span>
+            <span class="stat-label">Total Guests</span>
+          </div>
+        </div>
+
+        <div id="rsvpListContainer" class="rsvp-list-container">
+          <!-- Dynamically populated cards -->
+        </div>
       </div>
     </div>
   </section>
+
+  <!-- OWNER PASSWORD MODAL -->
+  <div id="wishesPassModal" class="owner-modal-backdrop" onclick="if(event.target===this) closeWishesPassModal()">
+    <div class="owner-modal-card">
+      <div class="owner-modal-title">Owner Access</div>
+      <p class="owner-modal-sub">Enter password to view received RSVPs &amp; wishes</p>
+      <input
+        id="wishesPassInput"
+        class="owner-modal-input"
+        type="password"
+        placeholder="Enter Password"
+        autocomplete="off"
+        onkeydown="if(event.key==='Enter') checkWishesPassword()"
+      >
+      <p id="ownerPassError" class="owner-pass-error" style="display:none;">Incorrect password. Please try again.</p>
+      <div class="owner-modal-actions">
+        <button type="button" class="owner-modal-btn primary" onclick="checkWishesPassword()">View RSVPs</button>
+        <button type="button" class="owner-modal-btn ghost" onclick="closeWishesPassModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ THANK YOU ============ -->
   <footer class="section thankyou">
