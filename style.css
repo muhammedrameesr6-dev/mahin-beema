@@ -23,7 +23,7 @@
   --cream:        rgba(200, 57, 58, 0.20);
   --gold-bright:  #e05050;
 
-  --font-display: 'Great Vibes', cursive;
+  --font-display: 'Alex Brush', cursive;
   --font-eyebrow: 'Cinzel', serif;
   --font-body:    'Lora', serif;
   --font-sub:     'Cormorant Garamond', serif;
@@ -346,8 +346,8 @@ body {
 .name-text {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(3.6rem, 10vw, 6.4rem);
-  line-height: 1.0;
+  font-size: clamp(3.8rem, 11vw, 6.8rem);
+  line-height: 1.05;
   color: var(--gold-soft);
   text-shadow: 0 0 18px rgba(245, 235, 230, 0.20);
 }
